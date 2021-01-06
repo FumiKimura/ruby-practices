@@ -1,0 +1,10 @@
+task "default" => "list"
+
+task "list" => "compile" do
+  sh "ls -l"
+end
+
+task "compile" do
+  sh "gcc hello.c"
+end
+
