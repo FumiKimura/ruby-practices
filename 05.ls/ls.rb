@@ -6,40 +6,41 @@ require 'etc'
 require 'date'
 
 # lsコマンド通常表示モードの場合(longフォーマットでない場合)
-def format(list)
+def regular_format(list)
+
+  return '' if list.empty? #もしディレクトリが空なら空の文字列を返す
+
   max_characters = list.max_by(&:size).size
   terminal_col_size = `tput cols`.to_i
 
-  col_num = column_number(terminal_col_size, max_characters)
-
+  col_num = column_number(terminal_col_size, max_characters + 5)
   # 算出したcolumn数から行数を算出する
-  row_num = (list.size % col_num).zero? ? list.size / col_num : (list.size / col_num) + 1
+  row_num = (list.size % col_num).zero? ? (list.size / col_num) : (list.size / col_num) + 1
+  split_by_col = list.each_slice(row_num).to_a
 
-  split_by_col = list.each_slice(row_num).map { |elem| elem }
-  result_to_print = ''
+  result_to_print = []
 
-  # 行->列の順番に動いてファイル名をappendする。列の最後まで行ったら次の行へ動く。
-  # 表計算シートを左から右に動かして、最後まで行ったら次の行の一番左からスタート
-  row_num.times do |row_idx|
-    col_num.times do |col_idx|
-      filename = split_by_col[col_idx][row_idx].nil? ? '' : split_by_col[col_idx][row_idx].ljust(max_characters + 1)
-      result_to_print += filename
+  until split_by_col.join.empty?
+    split_by_col.each do |col|
+      col.empty? ? " ": result_to_print << col.shift.ljust(max_characters + 5)
     end
-    puts result_to_print
-    result_to_print = ''
+    puts result_to_print.join
+    result_to_print.clear
   end
 end
 
-# ターミナルのcolumnの大きさに合わせて列数を変える(3行が最大)
+# ターミナルのcolumnの大きさに合わせて列数を変える
+# もしcolumnの大きさが最大ファイル文字より小さければ列数1を返す
 def column_number(terminal_size, max_char)
-  case terminal_size / (max_char + 1)
-  when 1, 2, 3
-    terminal_size / (max_char + 1)
-  when 0
-    1
+
+  col = terminal_size / max_char
+
+  if col == 0
+    return 1
   else
-    3
+    return col
   end
+
 end
 
 # longフォーマットで表示をするために整える
@@ -145,11 +146,10 @@ end
 # ファイルの最終変更日を表示する
 # 6ヶ月以上のものは最終更新時間を表示しない、6ヶ月以内のモノは時間を表示
 def display_last_modification_date(day)
-  splitted_str = day.strftime('%b %d %H:%M %Y').split(' ')
   if (Date.today - day.to_date).to_i >= 180
-    "#{splitted_str[0]}\s#{splitted_str[1]}\s\s#{splitted_str.last}"
+    return day.strftime('%b %d  %Y')
   else
-    "#{splitted_str[0]}\s#{splitted_str[1]}\s#{splitted_str[2]}"
+    return day.strftime('%b %d %H:%M')
   end
 end
 
@@ -158,15 +158,23 @@ end
 
 # ターミナルに出力させる前にonになっているオプションから
 def print_list_content(long_format, reverse_sort, include_dot, target_dir)
-  if long_format == true && reverse_sort == true
-    long_format(Dir.glob('*', include_dot, base: target_dir).sort.reverse, target_dir)
-  elsif long_format == true && reverse_sort == false
-    long_format(Dir.glob('*', include_dot, base: target_dir).sort, target_dir)
-  elsif long_format == false && reverse_sort == true # lオプション = falseなので3列
-    format(Dir.glob('*', include_dot, base: target_dir).sort.reverse)
-  else # long_format == false && reverse_sort == false, lオプション = falseなので３列
-    format(Dir.glob('*', include_dot, base: target_dir).sort)
+
+  files = []
+
+  # 逆順で表示するかを判断する
+  unless reverse_sort
+    files = Dir.glob('*', include_dot, base: target_dir).sort
+  else
+    files = Dir.glob('*', include_dot, base: target_dir).sort.reverse
   end
+
+  # longフォーマットで表示するかを判断する
+  if long_format
+    long_format(files, target_dir)
+  else
+    regular_format(files)
+  end
+
 end
 
 opt = OptionParser.new
