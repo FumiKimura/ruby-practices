@@ -7,8 +7,7 @@ require 'date'
 
 # lsコマンド通常表示モードの場合(longフォーマットでない場合)
 def regular_format(list)
-
-  return '' if list.empty? #もしディレクトリが空なら空の文字列を返す
+  return '' if list.empty? # もしディレクトリが空なら空の文字列を返す
 
   max_characters = list.max_by(&:size).size
   terminal_col_size = `tput cols`.to_i
@@ -22,7 +21,7 @@ def regular_format(list)
 
   until split_by_col.join.empty?
     split_by_col.each do |col|
-      col.empty? ? " ": result_to_print << col.shift.ljust(max_characters + 5)
+      col.empty? ? ' ' : result_to_print << col.shift.ljust(max_characters + 5)
     end
     puts result_to_print.join
     result_to_print.clear
@@ -32,15 +31,8 @@ end
 # ターミナルのcolumnの大きさに合わせて列数を変える
 # もしcolumnの大きさが最大ファイル文字より小さければ列数1を返す
 def column_number(terminal_size, max_char)
-
   col = terminal_size / max_char
-
-  if col == 0
-    return 1
-  else
-    return col
-  end
-
+  col.zero? ? 1 : col
 end
 
 # longフォーマットで表示をするために整える
@@ -147,9 +139,9 @@ end
 # 6ヶ月以上のものは最終更新時間を表示しない、6ヶ月以内のモノは時間を表示
 def display_last_modification_date(day)
   if (Date.today - day.to_date).to_i >= 180
-    return day.strftime('%b %d  %Y')
+    day.strftime('%b %d  %Y')
   else
-    return day.strftime('%b %d %H:%M')
+    day.strftime('%b %d %H:%M')
   end
 end
 
@@ -158,23 +150,15 @@ end
 
 # ターミナルに出力させる前にonになっているオプションから
 def print_list_content(long_format, reverse_sort, include_dot, target_dir)
-
-  files = []
-
   # 逆順で表示するかを判断する
-  unless reverse_sort
-    files = Dir.glob('*', include_dot, base: target_dir).sort
-  else
-    files = Dir.glob('*', include_dot, base: target_dir).sort.reverse
-  end
+  files = if reverse_sort
+            Dir.glob('*', include_dot, base: target_dir).sort.reverse
+          else
+            Dir.glob('*', include_dot, base: target_dir).sort
+          end
 
   # longフォーマットで表示するかを判断する
-  if long_format
-    long_format(files, target_dir)
-  else
-    regular_format(files)
-  end
-
+  long_format ? long_format(files, target_dir) : regular_format(files)
 end
 
 opt = OptionParser.new
